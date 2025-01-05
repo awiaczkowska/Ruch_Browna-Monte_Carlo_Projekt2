@@ -1,0 +1,120 @@
+---
+title: "Projekt2"
+author: "Alicja Wiączkowska"
+date: "2024-12-23"
+output: 
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+\newpage 
+  
+# Wstęp  
+  
+Opcja to instrument finansowy dający prawo m.in. do zakupu danego towaru w przyszłości po obecnie ustalonej cenie. Zfinalizowanie opcji nie jest obiwiązkowe - można z niego zrezygnować np. w momencie gdy cena rynkowa towaru będącego przedmoitem umowy spadnie poniżej ceny wykonania opcji. 
+
+W pracy będziemy rozważać dwa rodzaje opcji:
+
+- **europejsie**, których wypłata (zysk wynikający z zakupu opcji) zależy jedynie od ceny rynkowej towaru, kórego dotyczyła umowa w czasie realizacji opcji,
+
+- **azjatyckie**, na których wypłatę wpływa cena rynkowa towaru będącego przedmiotem umowy w kilku punktach czasu.
+
+W pracy zajmiemy się estymacją wartości oczekiwanej wypłaty opcji kupna w momencie wykonania $T=1$. Do  modelowania opcji użyty zostanie geometryczny ruch Browna $GBM(\mu,\sigma)$ daney wzorem:
+$$S_t =
+ S_0\cdot e\ ^{\mu^* t +\sigma B_t } = 
+ S_0\cdot \exp\left(\left(r-\frac{\sigma^2}{2}\right)\cdot t +\sigma \cdot B_t \right),$$
+gdzie:
+
+- $t\in[0,T] = [0,1]$ - chwila w której badana jest wartość geometrycznego ruchu Browna,  
+
+
+- $B_t$ - ruch Browna,   
+  
+- $\sigma = 0.25$ - zmienność, 
+
+- $r = 0.05$ - stopa procentowa,  
+
+- $\mu^* = \left(r-\frac{\sigma^2}{2}\right)$ - stała zależna od zmienności i stopy procentowej,
+
+- $S_0 = 100$ - wartość początkowa, którą można interpretować jako cenę towaru w chwili 0.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(cache = T)
+knitr::opts_chunk$set(warning = F)
+```
+
+```{r libraries}
+
+```
+
+```{r parmeters}
+r = 0.05
+sigma = 0.25
+S0 = 100
+K = 100
+R=5000
+```
+
+
+# Opcje Eurpoejskie
+  
+Oczekowaną wypłatę opcji europejskich możemy zapisać wzorem 
+$$I= e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]=e^{-r}\cdot \mathbb E\left[max\{S_1 - K, 0\}\right],$$
+gdzie: $K = 100$ - cena wykonania opcji, $S_T = S_1$ - cena rynkowa towaru będącego przedmiotem umowy w momencie realizacji opcji $T=1$.
+
+## Wzór Blacka-Scholesa
+Dla opcji europejskich wartość $I$ można dokładnie wyliczyć korzystając ze wzoru Blacka-Scholesa:
+
+$$E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
+gdzie: 
+
+- $\Phi$ - dystrybuanta standardowego rozkładu normalnego $\mathcal N(0,1)$,
+
+- $d_1=\frac{1}{\sigma}\left[\ln\left(\frac{S_0}{K}\right)+r+\frac{\sigma^2}{2}\right]$
+
+- $d_2=d_1-\sigma$.
+
+```{r Black-Scholes}
+d1 =  {log(S0/K) + r + sigma**2/2} /sigma
+d2 = d1 - sigma
+eur_teoret <- S0 * pnorm(d1) - K*exp(-r) *pnorm(d2)
+eur_teoret<- exp(-r) * eur_teoret
+```
+
+Przy parmetrach: $r = 0.05$, $\sigma = 0.25$, $S_0 = 100$, $K = 100$ otrzymamy  wartość teoretyczną: 
+
+$$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =11.7343652.$$
+
+## Estrymator Crude Monte Carlo  
+
+## Zmienne antytetyczne
+
+## Estymator zmiennych kontrolnych
+  
+## Stratyfikacja
+  
+  
+# Opcje azjatyckie
+```{r}
+n=10
+t_wek <-seq (1/n,1, length.out=n)
+
+SIGMA <- matrix(numeric(n*n), ncol=(n))
+# macierz kowariancji wektora 
+for(i in 1:n){
+  for(j in 1:n){
+    SIGMA[i,j] <- min(t_wek[i],t_wek[j])
+  }
+}
+```
+
+
+
+## Estrymator Crude Monte Carlo  
+
+  
+## Stratyfikacja
+  
+
