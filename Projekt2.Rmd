@@ -55,6 +55,8 @@ sigma = 0.25
 S0 = 100
 K = 100
 R=5000
+
+mu_star = r - sigma^2/2
 ```
 
 
@@ -67,7 +69,7 @@ gdzie: $K = 100$ - cena wykonania opcji, $S_T = S_1$ - cena rynkowa towaru będ�
 ## Wzór Blacka-Scholesa
 Dla opcji europejskich wartość $I$ można dokładnie wyliczyć korzystając ze wzoru Blacka-Scholesa:
 
-$$E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
+$$\mathbb E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
 gdzie: 
 
 - $\Phi$ - dystrybuanta standardowego rozkładu normalnego $\mathcal N(0,1)$,
@@ -89,7 +91,42 @@ $$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =11.7343652.$$
 
 ## Estrymator Crude Monte Carlo  
 
+W celu wyestymowania wartości $I = e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]$ wygenerowano $R=5000$ replikacji $Y_1,Y_2,...,Y_R$ będących realizacjami zmiennej losowej  $e^{-r}\cdot (S_1 - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
+$$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
+Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S_1 = S_0\cdot e\ ^{\mu^* +\sigma B_1 }$, zmienną $B_1$ - wartość ruchu Browna w chwili $t=1$ - możemy zasymulować losową liczbą z rozkładu $\mathcal N(0,1)$.
+
+Wariancję tego estymatora obliczamy następująco:
+$$ Var\left(\hat Y^{_{CMC}}_R\right) = Var\left(\frac{1}{R}\sum_{i=1}^R Y_i\right) = \frac{1}{R^2} \sum_{i=1}^R Var(Y_i) = \frac{Var(Y_1)}{R}=...$$
+
+```{r eur CMC}
+  Y <- S0 * exp( mu_star +sigma * rnorm(R) ) - K
+  Y[Y<0] <- 0
+  Y <- Y * exp(-r) 
+  Y_CMC <- sum(Y) / R
+
+```
+
+```{r}
+Y_CMC
+```
+
+
 ## Zmienne antytetyczne
+
+Jest to jedna z metod redukcji wariancji. Opierająca się na fakcie, że dla zależnych zmiennych losowych $X$ i $Y$ zachodzi 
+
+$$Var(X+Y) = Var(X) + Var(Y) +2\cdot Cov(X,Y)$$
+$$Var\left(\sum_{i=1}^N Xi\right) = \left(\sum_{i=1}^N Var(X_i)\right)  +2 \sum_{1\leq i<j\leq N} Cov(X_i,X_j) $$
+Zasadniczym krokiem jest takie dobranie par zmiennych, aby ich kowariancja była ujemna i możliwie duża co do modułu.
+
+Estymując wartość $I$ tym razem zamiast generować $R=5000$ niezależnych 
+zmiennych losowych, wysymulujemy $\frac{R}{2} = 2500$ par zmiennych zależnych. 
+
+Symulując realizacje wartości ruchu Browna $B_1\sim\mathcal N(0,1)$ wygenerujemy $\frac{R}{2}$ par $(Z, -Z)$, gdzie $Z \sim\mathcal N(0,1)$. 
+
+Oczywiście 
+$$Cov(Z,-Z) = (-1)\cdot Var(Z) = -1$$
+ Mamy więc zmienne losowe 
 
 ## Estymator zmiennych kontrolnych
   
@@ -97,6 +134,58 @@ $$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =11.7343652.$$
   
   
 # Opcje azjatyckie
+
+Oczekowaną wypłatę opcji azjatyckich możemy zapisać wzorem 
+
+$$I= e^{-r}\cdot\mathbb E\left[ \left(A_n - K \right)_+\right]$$
+gdzie: 
+
+- $A_n =  \left(\frac{1}{n}\sum_{j=1}^{n}S_{j/n}\right)$, 
+
+- $K = 100$ - cena wykonania opcji, 
+ 
+- $S_T = S_1$ - cena rynkowa towaru będącego przedmiotem umowy w momencie realizacji opcji $T=1$.
+
+
+## Estrymator Crude Monte Carlo
+
+Estymowaną wartością jest $I = e^{-r}\cdot\mathbb E\left[(A_n - K)_+\right]$. Za liczbę replikacji przyjęto $R=5000$.
+
+Przeporwadzając symulację wygenerowano $R=5000$ losowych ścieżek geometrycznego ruchu Browna i dla każdej z nich zapamiętano odpowiednią wartość zmiennej losowej $A_n$. 
+
+Niech zmienne losowe $Y_1,Y_2,...,Y_R$ będą replikacjami realizacji zmiennej losowej  $e^{-r}\cdot (A_n - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
+$$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
+Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S_{k/n} = S_0\cdot e\ ^{\mu^* +\sigma B_{k/n} }$, zmienną $B_{k/n}$ - wartość ścieżki geometrycznego ruchu Browna w chwili $t=\frac{k}{n}$ - możemy zasymulować poprzez $B_{k/n} = \sum_{i=1}^k Z_i$, gdzie $Z_i$ jest 
+losową liczbą z rozkładu $\mathcal N(0,\frac{1}{n})$.
+
+```{r azj CMC}
+# kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
+n=3
+B = matrix(rnorm(n*R,0,1/n), ncol = n, nrow = R)
+for(i in 1:R){
+  B[i,] <- cumsum(B[i,])
+}
+# B - r. Browna
+# S - geom. r. Browna
+t = 1:n /n
+t <- matrix(rep(t,R), ncol = n, nrow = R, byrow=T)
+S = S0*exp( mu_star*t + sigma*B )
+
+A <- numeric(R)
+for(i in 1:R){
+  A[i] <- sum(S[i,])/n
+}
+
+Y = A-K
+Y[Y<0] <- 0
+Y <- Y * exp(-r) 
+Y_n_CMC <- sum(Y) / R
+
+```
+
+
+  
+## Stratyfikacja
 ```{r}
 n=10
 t_wek <-seq (1/n,1, length.out=n)
@@ -112,9 +201,6 @@ for(i in 1:n){
 
 
 
-## Estrymator Crude Monte Carlo  
 
-  
-## Stratyfikacja
   
 
