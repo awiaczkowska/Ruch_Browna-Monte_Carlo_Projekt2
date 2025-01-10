@@ -69,7 +69,7 @@ gdzie: $K = 100$ - cena wykonania opcji, $S_T = S_1$ - cena rynkowa towaru będ�
 ## Wzór Blacka-Scholesa
 Dla opcji europejskich wartość $I$ można dokładnie wyliczyć korzystając ze wzoru Blacka-Scholesa:
 
-$$\mathbb E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
+$$e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
 gdzie: 
 
 - $\Phi$ - dystrybuanta standardowego rozkładu normalnego $\mathcal N(0,1)$,
@@ -79,15 +79,15 @@ gdzie:
 - $d_2=d_1-\sigma$.
 
 ```{r Black-Scholes}
+
 d1 =  {log(S0/K) + r + sigma**2/2} /sigma
 d2 = d1 - sigma
 eur_teoret <- S0 * pnorm(d1) - K*exp(-r) *pnorm(d2)
-eur_teoret<- exp(-r) * eur_teoret
 ```
 
 Przy parmetrach: $r = 0.05$, $\sigma = 0.25$, $S_0 = 100$, $K = 100$ otrzymamy  wartość teoretyczną: 
 
-$$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =11.7343652.$$
+$$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =12.336.$$
 
 ## Estrymator Crude Monte Carlo  
 
@@ -99,15 +99,17 @@ Wariancję tego estymatora obliczamy następująco:
 $$ Var\left(\hat Y^{_{CMC}}_R\right) = Var\left(\frac{1}{R}\sum_{i=1}^R Y_i\right) = \frac{1}{R^2} \sum_{i=1}^R Var(Y_i) = \frac{Var(Y_1)}{R}=...$$
 
 ```{r eur CMC}
+Y_CMC <- function(R=5000){
   Y <- S0 * exp( mu_star +sigma * rnorm(R) ) - K
   Y[Y<0] <- 0
   Y <- Y * exp(-r) 
   Y_CMC <- sum(Y) / R
-
+  return(Y_CMC)
+}
 ```
 
 ```{r}
-Y_CMC
+Y_CMC()
 ```
 
 
@@ -119,17 +121,71 @@ $$Var(X+Y) = Var(X) + Var(Y) +2\cdot Cov(X,Y)$$
 $$Var\left(\sum_{i=1}^N Xi\right) = \left(\sum_{i=1}^N Var(X_i)\right)  +2 \sum_{1\leq i<j\leq N} Cov(X_i,X_j) $$
 Zasadniczym krokiem jest takie dobranie par zmiennych, aby ich kowariancja była ujemna i możliwie duża co do modułu.
 
-Estymując wartość $I$ tym razem zamiast generować $R=5000$ niezależnych 
-zmiennych losowych, wysymulujemy $\frac{R}{2} = 2500$ par zmiennych zależnych. 
+Estymując wartość $I$ tym razem zamiast bazować estymator na $R=5000$ niezależnych 
+zmiennych losowych, wykorzystamy pary zmiennych zależnych. 
 
-Symulując realizacje wartości ruchu Browna $B_1\sim\mathcal N(0,1)$ wygenerujemy $\frac{R}{2}$ par $(Z, -Z)$, gdzie $Z \sim\mathcal N(0,1)$. 
+Symulując realizacje wartości ruchu Browna $B_1$ wygenerujemy $R$ par $(Z, -Z)$, gdzie $Z \sim\mathcal N(0,1)$.
 
 Oczywiście 
 $$Cov(Z,-Z) = (-1)\cdot Var(Z) = -1$$
- Mamy więc zmienne losowe 
+ Mamy więc zmienne losowe $Z_1, Z_2,..., Z_{2R-1}, Z_{2R}$ takie że $Z_{2i} =-Z_{2i-1}$. 
+Na ich podstwie zbudujemy realizacje wartości opcji europejsiej $Y_1,Y_2,...,Y_{2R-1} ,Y_{2R}$ w sposób analogiczny jak w przypadku estymatora *Crude Monte Carlo*: 
+$$Y_i = e^{-r}\cdot (S_0\cdot e\ ^{\mu^* +\sigma Z_i } - K)_+$$
+Ostatecznie estymator zmiennych antytetycznych jest postci:
+$$\hat Y^{_{ant}}_{2R} = \frac{1}{2R}\sum_{i=1}^{2R} Y_i.$$
+Zauważmy, że przy ustalonej mocy obliczeniowej preznaczonej na generowanie liczb pseudolosowych,
+w przypadku estymatora zmiennych antytetycznych do redukcji wariancji przyczynia się nie tylko ujemna kowariancja zmiennych losowych, ale też fakt, że otrzymujemy dwukrotnie więcej replikacji niż dla estymatora *CMC*.
+
+
+```{r antyt}
+Y_ant<-function(R=5000){
+  B <- rnorm(R)
+  B<- c(B,-B)
+  Y <- S0 * exp( mu_star +sigma * B ) - K
+  Y[Y<0] <- 0
+  Y <- Y * exp(-r) 
+  Y_ant <- sum(Y) / (2*R)
+  return(Y_ant)
+}
+```
+
+```{r}
+Y_ant()
+```
 
 ## Estymator zmiennych kontrolnych
+
+Również w tej metodzie redukcja wariancji estymatora jest związana z zależnoscią generowanych zmiennych losowych. Oprócz replikacji $Y_1,..., Y_R$ istotne są również tzw. *zmienne kontrolne* $X_1,..., X_R$. Ważnym aspektem tej metody jest silna korelacja między $Y_i$ a $X_i$ oraz znajomość wartości oczekiwanej zmiennej kontrolnej. 
+Do estymacji wartości $I= e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]$ za zmienne kontrolne przyjmiemy realizację wartości ruchu Browna $B_1$, na podstawie której obliczana zostaje wartość $GBM$. Tak więc mamy 
+$$X_i \sim\mathcal N(0,1),\quad\quad\quad Y_i = e^{-r}\cdot (S_0\cdot e\ ^{\mu^* +\sigma X_i } - K)_+,$$
+natomiast sam estymtor jest postaci:
+$$\hat Y^{_{CV}}_{R} = \hat Y^{_{CMC}}_{R} + c\cdot\left( \hat X_R - \mathbb E X\right) = \hat Y^{_{CMC}}_{R} + c\cdot \hat X_R,$$
+gdzie $\hat X_R =\frac{1}{R} \sum_{j=1}^RX_j$, natomiast stała $c$ jest optymalna (gwarantuje najmniejszą wariancję $\hat Y^{_{CV}}_{R}$) gdy spełnia $$ c= \frac{-Cov(Y_i,X_i)}{Var (X_i)} - \frac{-Cov(Y_i,X_i)}{1} = -Cov(Y_i,X_i) = -\mathbb E [(Y_i-\mathbb E Y_i)(X_i-\mathbb EX_i)] = -\mathbb E [(Y_i-I)\cdot X_i]$$
   
+Wartość $ -Cov(Y_i,X_i)$ nie jest nam znana, więc możemy ją estymować następująco:
+$$\hat c = \hat s_{_{YX}}^2 = -\frac{1}{R-1} \sum_{i=1}^R \left(Y_i -  \hat Y^{_{CMC}}_{R}  \right)\cdot X_i$$
+```{r CV}
+Y_CV<-function(R=5000){
+  X<-rnorm(R)
+  Y <- S0 * exp( mu_star +sigma * X ) - K
+  Y[Y<0] <- 0
+  Y <- Y * exp(-r) 
+  Y_CMC <- sum(Y) / R
+  
+  X_hat = mean(X)
+  c = - sum( {Y-Y_CMC}*X ) / (1-R)
+  
+  Y_CV <- Y_CMC + c * X_hat
+  return(Y_CV)
+}
+```
+
+```{r}
+Y_CV()
+```
+
+
+
 ## Stratyfikacja
   
   
@@ -161,7 +217,7 @@ losową liczbą z rozkładu $\mathcal N(0,\frac{1}{n})$.
 ```{r azj CMC}
 # kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
 n=3
-B = matrix(rnorm(n*R,0,1/n), ncol = n, nrow = R)
+B = matrix(rnorm(n*R,0, sd = sqrt(1/n)), ncol = n, nrow = R)
 for(i in 1:R){
   B[i,] <- cumsum(B[i,])
 }
@@ -183,6 +239,10 @@ Y_n_CMC <- sum(Y) / R
 
 ```
 
+```{r}
+Y_n_CMC
+```
+
 
   
 ## Stratyfikacja
@@ -200,7 +260,7 @@ for(i in 1:n){
 ```
 
 
-
+# Wnioski / Podsumowanie
 
   
 
