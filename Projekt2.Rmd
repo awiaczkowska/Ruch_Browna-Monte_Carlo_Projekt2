@@ -15,28 +15,28 @@ Opcja to instrument finansowy dający prawo m.in. do zakupu danego towaru w przy
 
 W pracy będziemy rozważać dwa rodzaje opcji:
 
-- **europejsie**, których wypłata (zysk wynikający z zakupu opcji) zależy jedynie od ceny rynkowej towaru, kórego dotyczyła umowa w czasie realizacji opcji,
+- **europejskie**, których wypłata (zysk wynikający z zakupu opcji) zależy jedynie od ceny rynkowej towaru, kórego dotyczyła umowa w czasie realizacji opcji,
 
 - **azjatyckie**, na których wypłatę wpływa cena rynkowa towaru będącego przedmiotem umowy w kilku punktach czasu.
 
 W pracy zajmiemy się estymacją wartości oczekiwanej wypłaty opcji kupna w momencie wykonania $T=1$. Do  modelowania opcji użyty zostanie geometryczny ruch Browna $GBM(\mu,\sigma)$ daney wzorem:
-$$S_t =
- S_0\cdot e\ ^{\mu^* t +\sigma B_t } = 
- S_0\cdot \exp\left(\left(r-\frac{\sigma^2}{2}\right)\cdot t +\sigma \cdot B_t \right),$$
+$$S(t) =
+ S_0\cdot e\ ^{\mu^* t +\sigma B(t) } = 
+ S_0\cdot \exp\left(\left(r-\frac{\sigma^2}{2}\right)\cdot t +\sigma \cdot B(t) \right),$$
 gdzie:
 
 - $t\in[0,T] = [0,1]$ - chwila w której badana jest wartość geometrycznego ruchu Browna,  
 
 
-- $B_t$ - ruch Browna,   
+- $B(t)$ - ruch Browna,   
   
 - $\sigma = 0.25$ - zmienność, 
 
 - $r = 0.05$ - stopa procentowa,  
 
-- $\mu^* = \left(r-\frac{\sigma^2}{2}\right)$ - stała zależna od zmienności i stopy procentowej,
+- $\mu^* = \left(r-\frac{\sigma^2}{2}\right) = 0.01875$ - stała zależna od zmienności i stopy procentowej,
 
-- $S_0 = 100$ - wartość początkowa, którą można interpretować jako cenę towaru w chwili 0.
+- $S_0 = S(0) = 100$ - wartość początkowa, którą można interpretować jako cenę towaru w chwili 0.
 
 
 ```{r setup, include=FALSE}
@@ -63,13 +63,13 @@ mu_star = r - sigma^2/2
 # Opcje Eurpoejskie
   
 Oczekowaną wypłatę opcji europejskich możemy zapisać wzorem 
-$$I= e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]=e^{-r}\cdot \mathbb E\left[max\{S_1 - K, 0\}\right],$$
-gdzie: $K = 100$ - cena wykonania opcji, $S_T = S_1$ - cena rynkowa towaru będącego przedmiotem umowy w momencie realizacji opcji $T=1$.
+$$I= e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right]=e^{-r}\cdot \mathbb E\left[max\{S(1) - K, 0\}\right],$$
+gdzie: $K = 100$ - cena wykonania opcji, $S(t) = S(1)$ - cena rynkowa towaru będącego przedmiotem umowy w momencie realizacji opcji $T=1$.
 
 ## Wzór Blacka-Scholesa
 Dla opcji europejskich wartość $I$ można dokładnie wyliczyć korzystając ze wzoru Blacka-Scholesa:
 
-$$e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
+$$e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right] = S_0 \cdot \Phi(d_1) - Ke^{-r}\Phi(d_2),$$
 gdzie: 
 
 - $\Phi$ - dystrybuanta standardowego rozkładu normalnego $\mathcal N(0,1)$,
@@ -87,13 +87,13 @@ eur_teoret <- S0 * pnorm(d1) - K*exp(-r) *pnorm(d2)
 
 Przy parmetrach: $r = 0.05$, $\sigma = 0.25$, $S_0 = 100$, $K = 100$ otrzymamy  wartość teoretyczną: 
 
-$$I= e^{-0.05}\cdot\mathbb E\left[(S_1 - 100)_+\right] =12.336.$$
+$$I= e^{-0.05}\cdot\mathbb E\left[(S(1) - 100)_+\right] =12.336.$$
 
 ## Estrymator Crude Monte Carlo  
 
-W celu wyestymowania wartości $I = e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]$ wygenerowano $R=5000$ replikacji $Y_1,Y_2,...,Y_R$ będących realizacjami zmiennej losowej  $e^{-r}\cdot (S_1 - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
+W celu wyestymowania wartości $I = e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right]$ wygenerowano $R=5000$ replikacji $Y_1,Y_2,...,Y_R$ będących realizacjami zmiennej losowej  $e^{-r}\cdot (S(1) - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
 $$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
-Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S_1 = S_0\cdot e\ ^{\mu^* +\sigma B_1 }$, zmienną $B_1$ - wartość ruchu Browna w chwili $t=1$ - możemy zasymulować losową liczbą z rozkładu $\mathcal N(0,1)$.
+Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S(1) = S_0\cdot e\ ^{\mu^* +\sigma B(1) }$, zmienną $B(1)$ - wartość ruchu Browna w chwili $t=1$ - możemy zasymulować losową liczbą z rozkładu $\mathcal N(0,1)$.
 
 Wariancję tego estymatora obliczamy następująco:
 $$ Var\left(\hat Y^{_{CMC}}_R\right) = Var\left(\frac{1}{R}\sum_{i=1}^R Y_i\right) = \frac{1}{R^2} \sum_{i=1}^R Var(Y_i) = \frac{Var(Y_1)}{R}=...$$
@@ -124,7 +124,7 @@ Zasadniczym krokiem jest takie dobranie par zmiennych, aby ich kowariancja była
 Estymując wartość $I$ tym razem zamiast bazować estymator na $R=5000$ niezależnych 
 zmiennych losowych, wykorzystamy pary zmiennych zależnych. 
 
-Symulując realizacje wartości ruchu Browna $B_1$ wygenerujemy $R$ par $(Z, -Z)$, gdzie $Z \sim\mathcal N(0,1)$.
+Symulując realizacje wartości ruchu Browna $B(1)$ wygenerujemy $R$ par $(Z, -Z)$, gdzie $Z \sim\mathcal N(0,1)$.
 
 Oczywiście 
 $$Cov(Z,-Z) = (-1)\cdot Var(Z) = -1$$
@@ -156,13 +156,14 @@ Y_ant()
 ## Estymator zmiennych kontrolnych
 
 Również w tej metodzie redukcja wariancji estymatora jest związana z zależnoscią generowanych zmiennych losowych. Oprócz replikacji $Y_1,..., Y_R$ istotne są również tzw. *zmienne kontrolne* $X_1,..., X_R$. Ważnym aspektem tej metody jest silna korelacja między $Y_i$ a $X_i$ oraz znajomość wartości oczekiwanej zmiennej kontrolnej. 
-Do estymacji wartości $I= e^{-r}\cdot\mathbb E\left[(S_1 - K)_+\right]$ za zmienne kontrolne przyjmiemy realizację wartości ruchu Browna $B_1$, na podstawie której obliczana zostaje wartość $GBM$. Tak więc mamy 
+Do estymacji wartości $I= e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right]$ za zmienne kontrolne przyjmiemy realizację wartości ruchu Browna $B(1)$, na podstawie której obliczana zostaje wartość $GBM$. Tak więc mamy 
 $$X_i \sim\mathcal N(0,1),\quad\quad\quad Y_i = e^{-r}\cdot (S_0\cdot e\ ^{\mu^* +\sigma X_i } - K)_+,$$
 natomiast sam estymtor jest postaci:
 $$\hat Y^{_{CV}}_{R} = \hat Y^{_{CMC}}_{R} + c\cdot\left( \hat X_R - \mathbb E X\right) = \hat Y^{_{CMC}}_{R} + c\cdot \hat X_R,$$
-gdzie $\hat X_R =\frac{1}{R} \sum_{j=1}^RX_j$, natomiast stała $c$ jest optymalna (gwarantuje najmniejszą wariancję $\hat Y^{_{CV}}_{R}$) gdy spełnia $$ c= \frac{-Cov(Y_i,X_i)}{Var (X_i)} - \frac{-Cov(Y_i,X_i)}{1} = -Cov(Y_i,X_i) = -\mathbb E [(Y_i-\mathbb E Y_i)(X_i-\mathbb EX_i)] = -\mathbb E [(Y_i-I)\cdot X_i]$$
+gdzie $\hat X_R =\frac{1}{R} \sum_{j=1}^RX_j$, natomiast stała $c$ jest optymalna (gwarantuje najmniejszą wariancję $\hat Y^{_{CV}}_{R}$) gdy spełnia 
+$$ c= \frac{-Cov(Y_1,X_1)}{Var (X_1)} - \frac{-Cov(Y_1,X_1)}{1} = -Cov(Y_1,X_1) = -\mathbb E [(Y_1-\mathbb E Y_1)(X_1-\mathbb EX_1)] = -\mathbb E [(Y_1-I)\cdot X_1]$$
   
-Wartość $ -Cov(Y_i,X_i)$ nie jest nam znana, więc możemy ją estymować następująco:
+Wartość $-Cov(Y_1,X_1)$ nie jest nam znana, więc możemy ją estymować następująco:
 $$\hat c = \hat s_{_{YX}}^2 = -\frac{1}{R-1} \sum_{i=1}^R \left(Y_i -  \hat Y^{_{CMC}}_{R}  \right)\cdot X_i$$
 ```{r CV}
 Y_CV<-function(R=5000){
@@ -196,12 +197,13 @@ Oczekowaną wypłatę opcji azjatyckich możemy zapisać wzorem
 $$I= e^{-r}\cdot\mathbb E\left[ \left(A_n - K \right)_+\right]$$
 gdzie: 
 
-- $A_n =  \left(\frac{1}{n}\sum_{j=1}^{n}S_{j/n}\right)$, 
+- $A_n =  \frac{1}{n}\sum_{j=1}^{n}S\left(\frac{j}{n}\right)$, 
 
 - $K = 100$ - cena wykonania opcji, 
  
-- $S_T = S_1$ - cena rynkowa towaru będącego przedmiotem umowy w momencie realizacji opcji $T=1$.
+- $S(t)$ - cena rynkowa towaru będącego przedmiotem umowy w momencie $t=1$.
 
+W przypadku opcji azjatyckich nie istieje dokładny wzór opisujący wartość $I$, dlatego jedynym sposobem na przybliżenie tej wartości jest estmacja.
 
 ## Estrymator Crude Monte Carlo
 
@@ -211,52 +213,92 @@ Przeporwadzając symulację wygenerowano $R=5000$ losowych ścieżek geometryczn
 
 Niech zmienne losowe $Y_1,Y_2,...,Y_R$ będą replikacjami realizacji zmiennej losowej  $e^{-r}\cdot (A_n - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
 $$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
-Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S_{k/n} = S_0\cdot e\ ^{\mu^* +\sigma B_{k/n} }$, zmienną $B_{k/n}$ - wartość ścieżki geometrycznego ruchu Browna w chwili $t=\frac{k}{n}$ - możemy zasymulować poprzez $B_{k/n} = \sum_{i=1}^k Z_i$, gdzie $Z_i$ jest 
+Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S(\frac{k}{n}) = S_0\cdot e\ ^{\mu^* +\sigma B(\frac{k}{n}) }$, zmienną $B(\frac{k}{n})$ - wartość ścieżki geometrycznego ruchu Browna w chwili $t=\frac{k}{n}$ - możemy zasymulować poprzez $B(\frac{k}{n}) = \sum_{i=1}^k Z_i$, gdzie $Z_i$ jest 
 losową liczbą z rozkładu $\mathcal N(0,\frac{1}{n})$.
 
 ```{r azj CMC}
 # kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
-n=3
-B = matrix(rnorm(n*R,0, sd = sqrt(1/n)), ncol = n, nrow = R)
-for(i in 1:R){
-  B[i,] <- cumsum(B[i,])
+Y_n_CMC<-function(n){
+  B = matrix(rnorm(n*R,0, sd = sqrt(1/n)), ncol = n, nrow = R)
+  for(i in 1:R){
+    B[i,] <- cumsum(B[i,])
+  }
+  # B - r. Browna
+  # S - geom. r. Browna
+  t = 1:n /n
+  t <- matrix(rep(t,R), ncol = n, nrow = R, byrow=T)
+  S = S0*exp( mu_star*t + sigma*B )
+  
+  A <- numeric(R)
+  for(i in 1:R){
+    A[i] <- sum(S[i,])/n
+  }
+  
+  Y = A-K
+  Y[Y<0] <- 0
+  Y <- Y * exp(-r) 
+  Y_n_CMC <- sum(Y) / R
+  return(Y_n_CMC)
 }
-# B - r. Browna
-# S - geom. r. Browna
-t = 1:n /n
-t <- matrix(rep(t,R), ncol = n, nrow = R, byrow=T)
-S = S0*exp( mu_star*t + sigma*B )
-
-A <- numeric(R)
-for(i in 1:R){
-  A[i] <- sum(S[i,])/n
-}
-
-Y = A-K
-Y[Y<0] <- 0
-Y <- Y * exp(-r) 
-Y_n_CMC <- sum(Y) / R
-
 ```
 
 ```{r}
-Y_n_CMC
+Y_n_CMC(3)
 ```
 
 
   
 ## Stratyfikacja
-```{r}
-n=10
-t_wek <-seq (1/n,1, length.out=n)
 
-SIGMA <- matrix(numeric(n*n), ncol=(n))
-# macierz kowariancji wektora 
-for(i in 1:n){
-  for(j in 1:n){
-    SIGMA[i,j] <- min(t_wek[i],t_wek[j])
+Stratyfikacja opiera się na generowaniu ustalonej ilości zmiennych losowych z poszczególnych warstw $W_1, W_2,...,W_m$. Warstwy muszą być rozłączne i sumować się do zbioru wszystkich wartości, które może osiągnąć stratyfikowana zmienna losowa.
+
+W pracy stratyfikacji poddany zostanie wektor $\mathbf B = \left( B\left(\frac{1}{n}\right), B\left(\frac{2}{n}\right),...,B\left(1\right) \right)\sim \mathcal N(\mathbf 0,\Sigma)$ reprezentujący wartości ścieżki ruchu Browna w poszczególnych punktach czasu. Wektor ten ma $n$-wymiarowy rozkład normalny o średniej $\mathbf 0 = (0,...,0)$, i macierzy kowariancji $\Sigma = \left[Cov \left(B(\frac{i}{n}), B(\frac{j}{n}) \right)\right]_{i,j} = \left[ min \left\{ \frac{i}{n}, \frac{j}{n} \right\}  \right]_{i,j}$. 
+
+Zauważmy, że macierz $\Sigma$ jest symetryczna i dodatnio określona. Możemy więc wykonując rozkład Choleskiego obliczyć (dolnotrójkątną) macierz $A$, która spełnia zależność $\Sigma=AA^T$. Przekształcając wektor z $n$-wymiarowego rozkładu normalnego $\mathbf Z\sim \mathcal N(\mathbf 0, Id)$ macierzą $A$ otrzymamy realizację wektora $\mathbf B$. 
+
+Rozważmy rodzinę zbiorów $\{W_i'\}_{i=1}^m$:
+
+- $W_1' = \mathbb K(\mathbf 0,r_1)$,  
+- $W_j' = \mathbb K(\mathbf 0,r_j) \backslash \mathbb K(\mathbf 0,r_{j-1})$, 
+dla $i = 2,3,...,m-1$,  
+- $W_m' = \mathbb R^m \backslash \mathbb K(\mathbf 0,r_{m-1})$,  
+
+gdzie $\mathbb K(\mathbf 0,\rho)$ oznacza $n$-wymiarową kulę o środku w $\mathbf 0$ i promieniu $\rho$. Dobierzmy promienie kul $r_i$ tak, aby $\mathbb P( \mathbf Z \in W_i') = \frac{1}{m}$. Mamy więc 
+$$\frac{i}{m} = \mathbb P\left(\mathbf Z \in \mathbb K(\mathbf 0,r_i)\right) = \mathbb P\left((Z_{1},...,Z_{n}) \in \mathbb K(\mathbf 0,r_i)\right) = \prod_{k=1}^n \mathbb P\left(Z_{k} \leq r_i \right) = 
+\left( \Phi^{-1}(r_i) \right)^n,$$
+z czego wynika, że  $r_i=\Phi\left(\sqrt[n] {\frac{i}{m}}\right)$ dla $i=1,2,...,m-1$, gdzie $\Phi$ oznacza dystrybuantę standardowego rozkładu normalnego.
+Wówczas możemy zdefiniować warstwy $W_i = \{ \mathbf z \in \mathbb R^n: A\mathbf z \in W_i'\}$. 
+
+Wygenerujmy teraz wektor losowy $\mathbf Z^{(i)} = (\mathbf Z\ |\ \mathbf Z\in W_i')$, którą potem będziemy mogli przekształcić na  zmienną z wybranej warstwy $(\mathbf B\ |\ \mathbf B\in W_i) = A\mathbf Z^{(i)}$. 
+Zacznijmy od wylosowania punktu na $n$-wymiarowej sferze jednostkowej
+$\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$ dla $\boldsymbol \xi= (\xi_1,...,\xi_n)$,  gdzie $\xi_i\sim \mathcal N(0,1)$.  
+Następnie wylosujmy wartość $D_i$ - odległość $\mathbf Z^{(i)}$ od $\mathbf 0$.
+Wiemy że $_i^2 =||Z^{(i)}||^2= \sum_{k=1}^{n} Z^{(i)}_k \sim\chi^2_n$, zatem mając do dyspozycji zmienną ze standardowego rozkładu jednostajnego $U\sim \mathcal U(0,1)$ dostaniemy
+$$D_i=\sqrt{F^{-1}_{\chi^2_n} \left( \frac{i-1}{m} +\frac{U}{m} \right)},$$
+gdzie $F^{-1}_{\chi^2_n}$ jest dystrybuantą odwrotną rozkładu $\chi^2$  z $n$ stopniami swobody. Ostatecznie otrzymujemy $\mathbf Z^{(i)}=D_i\cdot\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$.
+
+
+
+
+```{r macierz kowariancji}
+SIGMA<-function(n){
+  t_wek <-seq (1/n,1, length.out=n)
+  
+  SIGMA <- matrix(numeric(n*n), ncol=(n))
+  # macierz kowariancji wektora 
+  for(i in 1:n){
+    for(j in 1:n){
+      SIGMA[i,j] <- min(t_wek[i],t_wek[j])
+    }
   }
+  return(SIGMA)
 }
+```
+
+
+```{r}
+
+
 ```
 
 
