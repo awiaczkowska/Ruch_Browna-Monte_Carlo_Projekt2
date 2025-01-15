@@ -89,7 +89,7 @@ Przy parmetrach: $r = 0.05$, $\sigma = 0.25$, $S_0 = 100$, $K = 100$ otrzymamy  
 
 $$I= e^{-0.05}\cdot\mathbb E\left[(S(1) - 100)_+\right] =12.336.$$
 
-## Estrymator Crude Monte Carlo  
+## Estymator Crude Monte Carlo  
 
 W celu wyestymowania wartości $I = e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right]$ wygenerowano $R=5000$ replikacji $Y_1,Y_2,...,Y_R$ będących realizacjami zmiennej losowej  $e^{-r}\cdot (S(1) - K)_+$. Wówczas $\mathbb E[Y_i] = I$, a estymator Crude Monte Carlo jest postaci
 $$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
@@ -201,7 +201,7 @@ gdzie:
 
 - $K = 100$ - cena wykonania opcji, 
  
-- $S(t)$ - cena rynkowa towaru będącego przedmiotem umowy w momencie $t=1$.
+- $S(t)$ - cena rynkowa towaru będącego przedmiotem umowy w momencie $t$.
 
 W przypadku opcji azjatyckich nie istieje dokładny wzór opisujący wartość $I$, dlatego jedynym sposobem na przybliżenie tej wartości jest estmacja.
 
@@ -269,14 +269,20 @@ $$\frac{i}{m} = \mathbb P\left(\mathbf Z \in \mathbb K(\mathbf 0,r_i)\right) = \
 z czego wynika, że  $r_i=\Phi\left(\sqrt[n] {\frac{i}{m}}\right)$ dla $i=1,2,...,m-1$, gdzie $\Phi$ oznacza dystrybuantę standardowego rozkładu normalnego.
 Wówczas możemy zdefiniować warstwy $W_i = \{ \mathbf z \in \mathbb R^n: A\mathbf z \in W_i'\}$. 
 
-Wygenerujmy teraz wektor losowy $\mathbf Z^{(i)} = (\mathbf Z\ |\ \mathbf Z\in W_i')$, którą potem będziemy mogli przekształcić na  zmienną z wybranej warstwy $(\mathbf B\ |\ \mathbf B\in W_i) = A\mathbf Z^{(i)}$. 
+Wygenerujmy teraz wektor losowy $\mathbf Z^{(i)} = (\mathbf Z\ |\ \mathbf Z\in W_i')$, który potem będziemy mogli przekształcić na  zmienną z wybranej warstwy $(\mathbf B\ |\ \mathbf B\in W_i) = A\mathbf Z^{(i)}$. 
 Zacznijmy od wylosowania punktu na $n$-wymiarowej sferze jednostkowej
 $\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$ dla $\boldsymbol \xi= (\xi_1,...,\xi_n)$,  gdzie $\xi_i\sim \mathcal N(0,1)$.  
-Następnie wylosujmy wartość $D_i$ - odległość $\mathbf Z^{(i)}$ od $\mathbf 0$.
+Następnie wylosujmy wartość $D^{(i)}$ - odległość $\mathbf Z^{(i)}$ od $\mathbf 0$.
 Wiemy że $_i^2 =||Z^{(i)}||^2= \sum_{k=1}^{n} Z^{(i)}_k \sim\chi^2_n$, zatem mając do dyspozycji zmienną ze standardowego rozkładu jednostajnego $U\sim \mathcal U(0,1)$ dostaniemy
-$$D_i=\sqrt{F^{-1}_{\chi^2_n} \left( \frac{i-1}{m} +\frac{U}{m} \right)},$$
-gdzie $F^{-1}_{\chi^2_n}$ jest dystrybuantą odwrotną rozkładu $\chi^2$  z $n$ stopniami swobody. Ostatecznie otrzymujemy $\mathbf Z^{(i)}=D_i\cdot\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$.
+$$D^{(i)}=\sqrt{F^{-1}_{\chi^2_n} \left( \frac{i-1}{m} +\frac{U}{m} \right)},$$
+gdzie $F^{-1}_{\chi^2_n}$ jest dystrybuantą odwrotną rozkładu $\chi^2$  z $n$ stopniami swobody. Ostatecznie otrzymujemy $\mathbf Z^{(i)}=D^{(i)}\cdot\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$.
 
+Dla każdej warstwy $W_i$ na podstwie $\mathbf Z^{(i)}$ budujemy wektory wartości ścieżki ruchu Browna $\mathbf B$, które  później przekształcamy na wektory $S$ wartości geometrycznego ruchu Browna. Następnie dla każdej warstwy tworzymy zmienne losowe $Y_i$ i obliczamy ich estymator $CMC$.
+Ostateczny estymator stratyfikcji ma postać
+
+$$\hat Y_R^{str} = \sum_{j=1}^m p_j\cdot \hat Y_{R_j}^{_{CMC\ (j)}},$$ 
+gdzie $R_j$ oznacza liczebność $j$-tej warstwy, a $p_j = \frac{R_j}{R}$ 
+Dla każdej z $m=$ warstw wygenerowano $\frac{R}{m}=$ relizacji wektora losowego $Y_i$.
 
 
 
@@ -296,9 +302,45 @@ SIGMA<-function(n){
 ```
 
 
-```{r}
+```{r p optimal}
+
+```
 
 
+```{r stratyfikacja}
+Y_str <- function(n, R, p){
+  
+  Sigma <- SIGMA(n)
+  A=t(chol(Sigma))
+  t_wek = 1:n /n
+  
+  # kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
+  strta_estimators <- numeric(m)
+  for(M in 1:m){
+    RR = floor( R*p[M] )
+    U <- runif(RR)
+    D <- sqrt( qchisq((M-1)/m + U/m, df=n) )
+    B <- matrix(rnorm(n*RR), nrow = RR, ncol = n) # ksi
+    for(i in 1:RR){
+       B[i,]<- B[i,]/sum(B[i,]) * D[i] # Z
+       B[i,]<- A %*% B[i,] # B
+    }
+    
+  S = S0*exp( mu_star*t_wek + sigma*B )
+    
+  A_n <- numeric(RR)
+  for(i in 1:RR){
+      A_n[i] <- sum(S[i,])/n
+    }
+    
+    Y = A_n-K
+    Y[Y<0] <- 0
+    Y <- Y * exp(-r) 
+    strta_estimators[M] <- sum(Y) / RR
+  }
+    Y_stratified <- mean(p * strta_estimators)
+    return(Y_stratified)
+}
 ```
 
 
