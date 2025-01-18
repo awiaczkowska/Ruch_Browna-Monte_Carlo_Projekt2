@@ -1,5 +1,6 @@
 ---
-title: "Projekt2"
+title: "Projekt 2"
+subtitle: "Estymacja wartości oczekiwanej opcji finansowych"
 author: "Alicja Wiączkowska"
 date: "2024-12-23"
 output: 
@@ -11,18 +12,18 @@ output:
   
 # Wstęp  
   
-Opcja to instrument finansowy dający prawo m.in. do zakupu danego towaru w przyszłości po obecnie ustalonej cenie. Zfinalizowanie opcji nie jest obiwiązkowe - można z niego zrezygnować np. w momencie gdy cena rynkowa towaru będącego przedmoitem umowy spadnie poniżej ceny wykonania opcji. 
+Opcja to instrument finansowy dający prawo m.in. do zakupu danego towaru w przyszłości po obecnie ustalonej cenie. Sfinalizowanie opcji nie jest obiwiązkowe - można z niego zrezygnować np. w momencie gdy cena rynkowa towaru będącego przedmoitem umowy spadnie poniżej ceny wykonania opcji. 
 
 W pracy będziemy rozważać dwa rodzaje opcji:
 
-- **europejskie**, których wypłata (zysk wynikający z zakupu opcji) zależy jedynie od ceny rynkowej towaru, kórego dotyczyła umowa w czasie realizacji opcji,
+- **europejskie**, których wypłata (zysk wynikający z zakupu opcji) zależy jedynie od ceny rynkowej towaru podlegającego umowie w czasie realizacji opcji,
 
 - **azjatyckie**, na których wypłatę wpływa cena rynkowa towaru będącego przedmiotem umowy w kilku punktach czasu.
 
 W pracy zajmiemy się estymacją wartości oczekiwanej wypłaty opcji kupna w momencie wykonania $T=1$. Do  modelowania opcji użyty zostanie geometryczny ruch Browna $GBM(\mu,\sigma)$ daney wzorem:
 $$S(t) =
- S_0\cdot e\ ^{\mu^* t +\sigma B(t) } = 
- S_0\cdot \exp\left(\left(r-\frac{\sigma^2}{2}\right)\cdot t +\sigma \cdot B(t) \right),$$
+ S_0\cdot \exp\left(\left(r-\frac{\sigma^2}{2}\right)\cdot t +\sigma \cdot B(t) \right)
+ = S_0\cdot e\ ^{\mu^* t +\sigma B(t) },$$
 gdzie:
 
 - $t\in[0,T] = [0,1]$ - chwila w której badana jest wartość geometrycznego ruchu Browna,  
@@ -46,8 +47,9 @@ knitr::opts_chunk$set(warning = F)
 ```
 
 ```{r libraries}
-
+library(lattice)
 ```
+
 
 ```{r parmeters}
 r = 0.05
@@ -57,6 +59,7 @@ K = 100
 R=5000
 
 mu_star = r - sigma^2/2
+PU_R = 1000 # licza estymatorów generowanych dla obliczenia przubliżonych przedziałów ufności
 ```
 
 
@@ -95,9 +98,6 @@ W celu wyestymowania wartości $I = e^{-r}\cdot\mathbb E\left[(S(1) - K)_+\right
 $$\hat Y^{_{CMC}}_R = \frac{1}{R}\sum_{i=1}^R Y_i.$$
 Zauważmy również, że do wygenerowania wartości geometrycznego ruchu Browna $S(1) = S_0\cdot e\ ^{\mu^* +\sigma B(1) }$, zmienną $B(1)$ - wartość ruchu Browna w chwili $t=1$ - możemy zasymulować losową liczbą z rozkładu $\mathcal N(0,1)$.
 
-Wariancję tego estymatora obliczamy następująco:
-$$ Var\left(\hat Y^{_{CMC}}_R\right) = Var\left(\frac{1}{R}\sum_{i=1}^R Y_i\right) = \frac{1}{R^2} \sum_{i=1}^R Var(Y_i) = \frac{Var(Y_1)}{R}=...$$
-
 ```{r eur CMC}
 Y_CMC <- function(R=5000){
   Y <- S0 * exp( mu_star +sigma * rnorm(R) ) - K
@@ -106,10 +106,6 @@ Y_CMC <- function(R=5000){
   Y_CMC <- sum(Y) / R
   return(Y_CMC)
 }
-```
-
-```{r}
-Y_CMC()
 ```
 
 
@@ -149,10 +145,7 @@ Y_ant<-function(R=5000){
 }
 ```
 
-```{r}
-Y_ant()
-```
-
+  
 ## Estymator zmiennych kontrolnych
 
 Również w tej metodzie redukcja wariancji estymatora jest związana z zależnoscią generowanych zmiennych losowych. Oprócz replikacji $Y_1,..., Y_R$ istotne są również tzw. *zmienne kontrolne* $X_1,..., X_R$. Ważnym aspektem tej metody jest silna korelacja między $Y_i$ a $X_i$ oraz znajomość wartości oczekiwanej zmiennej kontrolnej. 
@@ -164,7 +157,7 @@ gdzie $\hat X_R =\frac{1}{R} \sum_{j=1}^RX_j$, natomiast stała $c$ jest optymal
 $$ c= \frac{-Cov(Y_1,X_1)}{Var (X_1)} - \frac{-Cov(Y_1,X_1)}{1} = -Cov(Y_1,X_1) = -\mathbb E [(Y_1-\mathbb E Y_1)(X_1-\mathbb EX_1)] = -\mathbb E [(Y_1-I)\cdot X_1]$$
   
 Wartość $-Cov(Y_1,X_1)$ nie jest nam znana, więc możemy ją estymować następująco:
-$$\hat c = \hat s_{_{YX}}^2 = -\frac{1}{R-1} \sum_{i=1}^R \left(Y_i -  \hat Y^{_{CMC}}_{R}  \right)\cdot X_i$$
+$$\hat c = -\hat s_{_{YX}}^2 = -\frac{1}{R-1} \sum_{i=1}^R \left(Y_i -  \hat Y^{_{CMC}}_{R}  \right)\cdot X_i$$
 ```{r CV}
 Y_CV<-function(R=5000){
   X<-rnorm(R)
@@ -174,22 +167,241 @@ Y_CV<-function(R=5000){
   Y_CMC <- sum(Y) / R
   
   X_hat = mean(X)
-  c = - sum( {Y-Y_CMC}*X ) / (1-R)
-  
+  c = - cov(Y,X) 
   Y_CV <- Y_CMC + c * X_hat
   return(Y_CV)
 }
-```
-
-```{r}
-Y_CV()
 ```
 
 
 
 ## Stratyfikacja
   
+
+Stratyfikacja opiera się na generowaniu ustalonej ilości zmiennych losowych z poszczególnych warstw $W_1, W_2,...,W_m$. Warstwy muszą być rozłączne i sumować się do zbioru wszystkich wartości, które może osiągnąć stratyfikowana zmienna losowa.
+
+Przeprowadzimy ją na realizacjach wartości ruchu Browna w momencie realizacji opcji $B(1)\sim\mathcal N(0,1)$. 
+
+Rozważmy rodzinę zbiorów $\{W_i\}_{i=1}^m$, w której 
+
+- $W_1 =  [-r_1,r_1]$,  
+- $W_j = [-r_j,-r_{j-1})_\cup(r_{j-1},r_j]$, 
+dla $i = 2,3,...,m-1$,  
+- $W_m = \mathbb R \backslash [-r_{m-1},r_{m-1}]$.
+
+Zbiory te możemy interpretować jako pierścienie w przestrzeni 1-wymiarowej.
+Dobierzmy wartości $r_i$ tak, aby $\mathbb P( B \in W_i') = \frac{1}{m}$, co jest równoważne z $\mathbb P( B \in [-r_i,r_i]) = \frac{i}{m}$. Otrzymujemy $$\frac{i}{m}=\mathbb P\left(|B| \leq r_i \right) = \mathbb P\left(B \leq r_i \right) - \mathbb P\left(B \leq -r_i \right) =\Phi^{-1}(r_i)-\Phi^{-1}(-r_i) = 2 \Phi^{-1}(r_i)-1,$$
+z czego wynika, że  $r_i=\Phi\left(0.5\cdot \left( {\frac{i}{m}+1}\right)\right)$ dla $i=1,2,...,m-1$, gdzie $\Phi$ jest dystrybuantą standardowego rozkładu normalnego.
+ 
+
+Wygenerujmy teraz zmienną losową $B^{(i)} = ( B\ |\   B \in W_i)$. 
+Zacznijmy od wylosowania znaku $sgn(B^{(i)})$ plus lub minus z równym prawdopodobieńswem  0.5. Losowanie to odpowiada wybraniu punktu na 1-wymiarowej sferze jednostkowej.
+Następnie wylosujmy wartość $D^{(i)}$ - odległość $B^{(i)}$ od zera. 
+Zauważmy, że $||B^{(i)}||^2 = (D^{(i)})^2 \sim\chi^2_1$. Weźmy teraz zmienną z rozkładu jednostajnego $U\sim \mathcal U(0,1)$ i dostaniemy
+$$D^{(i)}=\sqrt{F^{-1}_{\chi^2_1} \left( \frac{i-1}{m} +\frac{U}{m} \right)},$$
+gdzie $F^{-1}_{\chi^2_1}$ jest dystrybuantą odwrotną rozkładu $\chi^2$  z $1$ stopniem swobody. Ostatecznie otrzymamy $B^{(i)}=D^{(i)}\cdot sgn(B^{(i)})$.
+
+Dla każdej warstwy $W_j$ realizacje wartości ruchu Browna  $B^{(j)}$ w chwili 1, przekształcamy na geometryczny ruch Browna, a Następnie dla każdej warstwy tworzymy zmienne losowe $Y_i$ i obliczamy ich estymator $CMC$.
+Ostateczny estymator stratyfikcji ma postać
+
+$$\hat Y_R^{str} = \sum_{j=1}^m p_j\cdot \hat Y_{R_j}^{_{CMC\ (j)}},$$ 
+gdzie $R_j$ oznacza liczebność $j$-tej warstwy, a $p_j = \frac{1}{m}$ prawdopodobieństwo wybrania $j$-tej warstwy.
+
+Estymator stratyfikacji ma najmniejszą wariancję, gdy
+$$R_j = \frac{p_j\sigma_j}{\sum_{i=1}^mp_i\sigma_i}R ,$$
+gdzie $\sigma_j$ oznacza odchylenie standardowe zmiennej losowej $(Y | Y\in W_i)$.
+
+
+w miejsce odchylenia standardowego $(Y | Y\in W_i)$ do wzoru podstawimy wyestymowaną wartość odchylenia próbkowego $s_i$. Dla zapewnienia $R_j \in \mathbb N$ wynik zaokrąglamy w górę otrzymując ostatecznie
+
+$$R_j = \left\lceil\frac{p_js_j}{\sum_{i=1}^mp_is_i}R \right\rceil.$$
+
+```{r macierz kowariancji}
+SIGMA<-function(n){
+  t_wek <-seq (1/n,1, length.out=n)
   
+  SIGMA <- matrix(numeric(n*n), ncol=(n))
+  # macierz kowariancji wektora 
+  for(i in 1:n){
+    for(j in 1:n){
+      SIGMA[i,j] <- min(t_wek[i],t_wek[j])
+    }
+  }
+  return(SIGMA)
+}
+```
+
+
+```{r optimal allocation}
+
+alloc_opt_R<-function(n,m,RR){
+  # RR - ilość wygenerowanych Y, na których podstawie estymujemy sd
+  Sigma <- SIGMA(n)
+  A=t(chol(Sigma))
+  t_wek = 1:n /n
+  
+  sds<-numeric(m)
+  
+  for(M in 1:m){
+    # generujemy (Y | Y\in W_M)
+      U <- runif(RR)
+      D <- sqrt( qchisq((M-1)/m + U/m, df=n) )
+      B <- matrix(rnorm(n*RR), nrow = RR, ncol = n) # ksi
+      for(i in 1:RR){
+         B[i,]<- B[i,]/ sqrt(sum(B[i,]**2)) * D[i] # Z
+         B[i,]<- A %*% B[i,] # B
+      }
+    S = S0*exp( mu_star*t_wek + sigma*B )
+    A_n <- numeric(RR)
+    for(i in 1:RR){
+        A_n[i] <- sum(S[i,])/n
+      }
+      Y = A_n-K
+      Y[Y<0] <- 0
+      Y <- Y * exp(-r) 
+      sds[M] <- sd(Y)
+    }  
+  return( ceiling(R * sds / sum(sds) ) )
+}
+```
+
+
+```{r stratyfikacja}
+
+Y_str <- function(n, m, alloc_R){
+  Sigma <- SIGMA(n)
+  A=t(chol(Sigma))
+  t_wek = 1:n /n
+  
+  # kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
+  strta_estimators <- numeric(m)
+  for(M in 1:m){
+    RR = alloc_R[M]
+    U <- runif(RR)
+    D <- sqrt( qchisq((M-1)/m + U/m, df=n) )
+    B <- matrix(rnorm(n*RR), nrow = RR, ncol = n) # ksi
+    for(i in 1:RR){
+       B[i,]<- B[i,]/sqrt(sum(B[i,]**2)) * D[i] # Z
+       B[i,]<- A %*% B[i,] # B
+    }
+    
+  S = S0*exp( mu_star*t_wek + sigma*B )
+    
+  A_n <- numeric(RR)
+  for(i in 1:RR){
+      A_n[i] <- sum(S[i,])/n
+    }
+    
+    Y = A_n-K
+    Y[Y<0] <- 0
+    Y <- Y * exp(-r) 
+    strta_estimators[M] <- sum(Y) / RR
+  }
+    Y_stratified <- mean( strta_estimators)
+    return(Y_stratified)
+}
+```
+
+
+
+## Porównanie estymatorów
+
+W celu porórnania powyżej opisanych metod, przyjmijmy $R=5000$ i wygenerujmy po $R'=1000$ realizacji każdego z estymatorów. Estymator stratyfikacji obliczymy dla liczby warstw $m=3$ oraz $m=5$. Poniżej na wykresie możemy zobaczyć wartości oblicznoych estymatorów.
+
+```{r estymatory dane fnc}
+estymatory<-function(fnc_wek, PU_R=1000){
+  # wiersze to realizacje estymatora, kolumny to rodzaj estymatora
+  est<- matrix(0,nrow=PU_R, ncol=length(fnc_wek))
+  for(i in 1:length(fnc_wek)){
+    est[,i] <- replicate((PU_R),fnc_wek[[i]]())
+  }
+  return(est)
+}
+```
+
+```{r plot estymators fnc}
+plot_estymators<-function(estyms,est_names,colrs){
+  PU_R <- nrow(estyms) 
+  col_num = ncol(estyms)
+  x <- 1:col_num
+  plot(estyms[,1], rep(col_num,PU_R ), yaxt='n', ylim=c(1,col_num), 
+       col=colrs[1], ylab="", xlab="", pch='|')
+  for(i in 2:col_num)
+    points(estyms[,i], rep(col_num-i+1,PU_R), add=T, col=colrs[i], yaxt='n', pch='|')
+  
+  axis(2, at=x,labels=rev(est_names), las=2, cex.axis=0.9, tck=-.01)
+  grid()
+}
+
+boxplot_estymators<-function(estyms,est_names,colrs){
+  colnames(estyms)<-est_names
+  boxplot(estyms,col=colrs, outline=F)
+  grid()
+  boxplot(estyms,col=colrs, add=T,  outline=F)
+}
+
+vars_barplot<-function(estyms,est_names,colrs){
+  col_num = ncol(estyms)
+  v<-numeric(col_num)
+  for(i in 1:col_num){
+    v[i] <- var(estyms[,i])
+  }
+  names(v)<-est_names
+  barplot(v, names.arg=est_names, col=colrs)
+}
+```
+
+
+```{r funkcje porównywnia 1}
+fnc_wek1 <- c(Y_CMC, Y_ant, Y_CV, function(){Y_str(1,3,alloc_opt_R(1,m=3,1000))}
+            ,function(){Y_str(1,5,alloc_opt_R(1,m=5,1000))} )
+```
+
+```{r estymatory 1}
+estyms1 <-  estymatory(fnc_wek1) 
+```
+
+
+```{r plot 1, fig.height=3}
+est_names <- c("CMC","ant", "CV", "str\nm=3", "str\nm=5")
+colrs <- c('orange', 'lightgreen', 'cyan3', 'purple1', 'violet')
+
+plot_estymators1<-function(){
+  plot_estymators(estyms1,est_names,colrs)
+  mtext("Wykres 1:", cex=0.7)
+  abline(v=eur_teoret, col='red', lwd=2)
+  text(eur_teoret,3.5, "wrt. teoret.", cex=0.7, pos=2, col="red")
+  text(eur_teoret,3.5, eur_teoret, cex=0.5, pos=4, col="red")
+}
+plot_estymators1()
+ 
+wykresy<-as.data.frame(matrix('', ncol=4))
+colnames(wykresy) <- c('nr wykresu','chunk','funkcja', 'parametry' )
+wykresy[1,] <- c(1, 'plot 1', 'plot_estymators1', "()")
+
+
+```
+
+Rozrzut każdego z estymatorów możemy dokładniej zobaczyć na poniższym wykresie pudełkowym, w którym odrzucone zostały wartości odstające. Natomiast na z wykresu słupkowego z prawej strony odczytać możemy wartości wariancji dla poszczególnych estymatorów.
+
+```{r boxplot 1,fig.height=4.5, fig.width=11}
+boxplot_estymators1<-function(){
+  par(mfrow=c(1,2))
+boxplot_estymators(estyms1,est_names,colrs)
+mtext("Wykres 2:", cex=1)
+abline(h = eur_teoret, lwd=1.5, col='red', lty= 1)
+
+vars_barplot(estyms1,est_names,colrs)
+mtext("Wykres 3:", cex=1)
+}
+boxplot_estymators1() 
+  
+wykresy[2,] <- c('2 & 3', 'boxplot 1', 'boxplot_estymators1', "()")
+```
+
+Na podstawie zaprezentowanych informacji możemy stwierdzić, że każda z metod redukcji wariancji spełniła swoją rolę - najbardziej rozrzucony okazał się wektor estymatorów *Crude Monte Carlo*. W przypadku zaprezentowanych symulacji najmniejszą wariancję uzyskał estymator zmiennych antytetycznych, porównywalnie dobry wynik uzyskaliśmy również przy estymatorze zmiennych kontrolnych. W przypadku stratyfikacji dostrzec można, że więsza liczba warstw miała pewien wpływ na redukcję wariancji estymatora. Niezależnie od metody, wartości wszystkich estymatorów skupiają się wokół oblicznoego wyniku teoretycznego. 
+
+
 # Opcje azjatyckie
 
 Oczekowaną wypłatę opcji azjatyckich możemy zapisać wzorem 
@@ -242,17 +454,12 @@ Y_n_CMC<-function(n){
 }
 ```
 
-```{r}
-Y_n_CMC(3)
-```
-
-
   
 ## Stratyfikacja
 
 Stratyfikacja opiera się na generowaniu ustalonej ilości zmiennych losowych z poszczególnych warstw $W_1, W_2,...,W_m$. Warstwy muszą być rozłączne i sumować się do zbioru wszystkich wartości, które może osiągnąć stratyfikowana zmienna losowa.
 
-W pracy stratyfikacji poddany zostanie wektor $\mathbf B = \left( B\left(\frac{1}{n}\right), B\left(\frac{2}{n}\right),...,B\left(1\right) \right)\sim \mathcal N(\mathbf 0,\Sigma)$ reprezentujący wartości ścieżki ruchu Browna w poszczególnych punktach czasu. Wektor ten ma $n$-wymiarowy rozkład normalny o średniej $\mathbf 0 = (0,...,0)$, i macierzy kowariancji $\Sigma = \left[Cov \left(B(\frac{i}{n}), B(\frac{j}{n}) \right)\right]_{i,j} = \left[ min \left\{ \frac{i}{n}, \frac{j}{n} \right\}  \right]_{i,j}$. 
+W pracy stratyfikacji poddany zostaną realizacje wektora $\mathbf B = \left( B\left(\frac{1}{n}\right), B\left(\frac{2}{n}\right),...,B\left(1\right) \right)\sim \mathcal N(\mathbf 0,\Sigma)$ reprezentujące wartości ścieżki ruchu Browna w poszczególnych punktach czasu. Wektor $\mathbf B$ ma $n$-wymiarowy rozkład normalny o średniej $\mathbf 0 = (0,...,0)$, i macierzy kowariancji $\Sigma = \left[Cov \left(B(\frac{i}{n}), B(\frac{j}{n}) \right)\right]_{i,j} = \left[ min \left\{ \frac{i}{n}, \frac{j}{n} \right\}  \right]_{i,j}$. 
 
 Zauważmy, że macierz $\Sigma$ jest symetryczna i dodatnio określona. Możemy więc wykonując rozkład Choleskiego obliczyć (dolnotrójkątną) macierz $A$, która spełnia zależność $\Sigma=AA^T$. Przekształcając wektor z $n$-wymiarowego rozkładu normalnego $\mathbf Z\sim \mathcal N(\mathbf 0, Id)$ macierzą $A$ otrzymamy realizację wektora $\mathbf B$. 
 
@@ -264,16 +471,16 @@ dla $i = 2,3,...,m-1$,
 - $W_m' = \mathbb R^m \backslash \mathbb K(\mathbf 0,r_{m-1})$,  
 
 gdzie $\mathbb K(\mathbf 0,\rho)$ oznacza $n$-wymiarową kulę o środku w $\mathbf 0$ i promieniu $\rho$. Dobierzmy promienie kul $r_i$ tak, aby $\mathbb P( \mathbf Z \in W_i') = \frac{1}{m}$. Mamy więc 
-$$\frac{i}{m} = \mathbb P\left(\mathbf Z \in \mathbb K(\mathbf 0,r_i)\right) = \mathbb P\left((Z_{1},...,Z_{n}) \in \mathbb K(\mathbf 0,r_i)\right) = \prod_{k=1}^n \mathbb P\left(Z_{k} \leq r_i \right) = 
-\left( \Phi^{-1}(r_i) \right)^n,$$
-z czego wynika, że  $r_i=\Phi\left(\sqrt[n] {\frac{i}{m}}\right)$ dla $i=1,2,...,m-1$, gdzie $\Phi$ oznacza dystrybuantę standardowego rozkładu normalnego.
+$$\frac{i}{m} = \mathbb P\left(\mathbf Z \in \mathbb K(\mathbf 0,r_i)\right) = \mathbb P\left((Z_{1},...,Z_{n}) \in \mathbb K(\mathbf 0,r_i)\right) = \prod_{k=1}^n \mathbb P\left(|Z_{k}| \leq r_i \right) = 
+\left(2\cdot \Phi^{-1}(r_i) -1 \right)^n,$$
+z czego wynika, że  $r_i=\Phi\left(0.5\cdot \sqrt[n] {\frac{i}{m}+1}\right)$ dla $i=1,2,...,m-1$, gdzie $\Phi$ oznacza dystrybuantę standardowego rozkładu normalnego.
 Wówczas możemy zdefiniować warstwy $W_i = \{ \mathbf z \in \mathbb R^n: A\mathbf z \in W_i'\}$. 
 
 Wygenerujmy teraz wektor losowy $\mathbf Z^{(i)} = (\mathbf Z\ |\ \mathbf Z\in W_i')$, który potem będziemy mogli przekształcić na  zmienną z wybranej warstwy $(\mathbf B\ |\ \mathbf B\in W_i) = A\mathbf Z^{(i)}$. 
 Zacznijmy od wylosowania punktu na $n$-wymiarowej sferze jednostkowej
 $\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$ dla $\boldsymbol \xi= (\xi_1,...,\xi_n)$,  gdzie $\xi_i\sim \mathcal N(0,1)$.  
 Następnie wylosujmy wartość $D^{(i)}$ - odległość $\mathbf Z^{(i)}$ od $\mathbf 0$.
-Wiemy że $_i^2 =||Z^{(i)}||^2= \sum_{k=1}^{n} Z^{(i)}_k \sim\chi^2_n$, zatem mając do dyspozycji zmienną ze standardowego rozkładu jednostajnego $U\sim \mathcal U(0,1)$ dostaniemy
+Wiemy że $||Z^{(i)}||^2= \sum_{k=1}^{n} \left(Z^{(i)}_k\right)^2 \sim\chi^2_n$, zatem mając do dyspozycji zmienną ze standardowego rozkładu jednostajnego $U\sim \mathcal U(0,1)$ dostaniemy
 $$D^{(i)}=\sqrt{F^{-1}_{\chi^2_n} \left( \frac{i-1}{m} +\frac{U}{m} \right)},$$
 gdzie $F^{-1}_{\chi^2_n}$ jest dystrybuantą odwrotną rozkładu $\chi^2$  z $n$ stopniami swobody. Ostatecznie otrzymujemy $\mathbf Z^{(i)}=D^{(i)}\cdot\frac{\boldsymbol \xi}{||\boldsymbol \xi||}$.
 
@@ -281,70 +488,107 @@ Dla każdej warstwy $W_i$ na podstwie $\mathbf Z^{(i)}$ budujemy wektory wartoś
 Ostateczny estymator stratyfikcji ma postać
 
 $$\hat Y_R^{str} = \sum_{j=1}^m p_j\cdot \hat Y_{R_j}^{_{CMC\ (j)}},$$ 
-gdzie $R_j$ oznacza liczebność $j$-tej warstwy, a $p_j = \frac{R_j}{R}$ 
-Dla każdej z $m=$ warstw wygenerowano $\frac{R}{m}=$ relizacji wektora losowego $Y_i$.
+gdzie $R_j$ oznacza liczebność $j$-tej warstwy, a $p_j = \frac{1}{m}$ prawdopodobieństwo wybrania $j$-tej warstwy.
 
+Estymator stratyfikacji ma najmniejszą wariancję, gdy
+$$R_j = \frac{p_j\sigma_j}{\sum_{i=1}^mp_i\sigma_i}R ,$$
+gdzie $\sigma_j$ oznacza odchylenie standardowe zmiennej losowej $(Y | Y\in W_i)$.
 
+Niestety wartość odchylenia standardowego $(Y | Y\in W_i)$ nie są znane, więc do wzoru podstawimy wyestymowaną wartość odchylenia próbkowego $s_i$. Dla zapewnienia $R_j \in \mathbb N$ wynik zaokrąglamy w górę otrzymując ostatecznie
 
-```{r macierz kowariancji}
-SIGMA<-function(n){
-  t_wek <-seq (1/n,1, length.out=n)
-  
-  SIGMA <- matrix(numeric(n*n), ncol=(n))
-  # macierz kowariancji wektora 
-  for(i in 1:n){
-    for(j in 1:n){
-      SIGMA[i,j] <- min(t_wek[i],t_wek[j])
-    }
-  }
-  return(SIGMA)
-}
+$$R_j = \left\lceil\frac{p_js_j}{\sum_{i=1}^mp_is_i}R \right\rceil.$$
+
+## Porównanie estymatorów
+
+W celu porórnania opisanych metod, rozważymy dwa przypadki: $n=3$ oraz $n=10$. Przyjmijmy ponownie $R = 5000$ i wygenerujmy po $R' = 1000$ realizacji każdego z estymatorów. Estymatory stratyfikacji obliczymy dla $m = 3$ oraz $m = 5$ warstw. 
+
+### $\mathbf{n=3}$
+
+Zajmijmy się najpierw opcjami, których wartość zależy od ceny w $n=3$ punktach czasu. Poniżej możemy zobaczyć wartości obliczonych estymatorów. 
+
+```{r funkcje porównywnia 3}
+n=3
+fnc_wek3<-c(function(){Y_n_CMC(n)}, function(){Y_str(n,3,alloc_opt_R(n,m=3,1000))}
+            ,function(){Y_str(n,5,alloc_opt_R(n,m=5,1000))} )
 ```
 
-
-```{r p optimal}
-
+```{r estymatory 3}
+estyms3<-estymatory(fnc_wek3)
 ```
 
+```{r plot 3, fig.height=2.8}
+est_names <- c("CMC","str, m=3", "str, m=5")
+colrs <- c('orange', 'purple1', 'violet')
+plot_estymators(estyms3,est_names,colrs)
+mtext("Wykres 4:", cex=0.7)
 
-```{r stratyfikacja}
-Y_str <- function(n, R, p){
-  
-  Sigma <- SIGMA(n)
-  A=t(chol(Sigma))
-  t_wek = 1:n /n
-  
-  # kolumny to kolejne replikacje, wiersze zawierają wartości ścieżki
-  strta_estimators <- numeric(m)
-  for(M in 1:m){
-    RR = floor( R*p[M] )
-    U <- runif(RR)
-    D <- sqrt( qchisq((M-1)/m + U/m, df=n) )
-    B <- matrix(rnorm(n*RR), nrow = RR, ncol = n) # ksi
-    for(i in 1:RR){
-       B[i,]<- B[i,]/sum(B[i,]) * D[i] # Z
-       B[i,]<- A %*% B[i,] # B
-    }
-    
-  S = S0*exp( mu_star*t_wek + sigma*B )
-    
-  A_n <- numeric(RR)
-  for(i in 1:RR){
-      A_n[i] <- sum(S[i,])/n
-    }
-    
-    Y = A_n-K
-    Y[Y<0] <- 0
-    Y <- Y * exp(-r) 
-    strta_estimators[M] <- sum(Y) / RR
-  }
-    Y_stratified <- mean(p * strta_estimators)
-    return(Y_stratified)
-}
+wykresy[3,] <- c('4', 'plot 3', 'plot_estymators', '(estyms3, est_names, colrs)')
 ```
 
+Już z wykresu 4 możemy wywnioskować, że najbardziej skrajne wartości znaleźć możemy w estymatorze $CMC$ - co jest zgodne z intuicją. Zauważyć też można, że rozważane estymatory stratyfikacji zwracają zbliżone wyniki. Więcej szczegółów dotyczących rozrzutu rozważanych estymatorów możemy odczytać z poniższego wykresu pudełowego oraz wykresu słupkowego przedstawiającego obliczone wariancje.
 
-# Wnioski / Podsumowanie
-
+```{r boxplot 3, fig.height=4.5, fig.width=11}
+par(mfrow=c(1,2)) 
+boxplot_estymators(estyms3,est_names,colrs)
+mtext("Wykres 5:", cex=0.7)
+vars_barplot(estyms3,est_names,colrs)
+mtext("Wykres 6:", cex=0.7)
   
+wykresy[4,] <- c('5', 'boxplot 3', 'boxplot_estymators', '(estyms3, est_names, colrs)')
+wykresy[5,] <- c('6', 'boxplot 3', 'vars_barplot', '(estyms3, est_names, colrs)')
+```
+Po usunięciu wartości odstających rozkłady dla wszystkich eastymatorów prezentują się podobnie, jednak na wykresie wariacji możemy zauważyć, że stratyfikacja wpłynęła na zmniejszenie rozrzutu. Liczba warstw nie miała większego znaczenia, lepszy efekt uzyskano przy $m=3$.
+Doświadczenie sugeruje, że przy $n=3$ badana wartość oczekiwana opcji azjatyckej $I$ wynosi w przybliżeniu $8.7$.
+
+
+### $\mathbf{n=10}$
+
+Rozważmy teraz opcje, których wartość zależy od ceny rynkowej w $n = 10$ punktach czasu. Na wykresie 7 przedstawiono realizacje estymatorów wartości $I$. 
+
+```{r funkcje porównywnia 10}
+n=10
+fnc_wek10<-c(function(){Y_n_CMC(n)}, function(){Y_str(n,3,alloc_opt_R(n,m=3,1000))}
+            ,function(){Y_str(n,5,alloc_opt_R(n,m=5,1000))} )
+```
+
+```{r estymatory 10}
+estyms10<-estymatory(fnc_wek10)
+```
+
+```{r plot 10,fig.height=2.8}
+plot_estymators(estyms10, est_names, colrs)
+mtext("Wykres 7:", cex=0.7)  
+ 
+wykresy[6,] <- c('7', 'plot 10', 'plot_estymators', '(estyms10, est_names, colrs)')
+```
+
+Z powyższego wykresu widzimy, że estymatory stratyfikacji dla $m=3$ i $m=5$ są podobnie rozrzucone i prawdopodobnie mają mniejsze odchylenie standardowe niż estymator $CMC$, jednak więcej szczegłów  możemy odczytać z wykresu 8 i 9.
+
+```{r boxplot 10, fig.height=4.5, fig.width=11}
+colnames(estyms10)<-est_names
+par(mfrow=c(1,2))
+boxplot_estymators(estyms10,est_names,colrs)
+mtext("Wykres 8:", cex=1)
+vars_barplot(estyms10,est_names,colrs)
+mtext("Wykres 9:", cex=1)
+ 
+wykresy[7,] <- c('8', 'boxplot 10', 'boxplot_estymators', '(estyms10, est_names, colrs)')
+wykresy[8,] <- c('9', 'boxplot 10', 'vars_barplot', '(estyms10, est_names, colrs)')
+```
+
+Na wykresie pudełowym możemy zaobserwować potwierdzenie faktu,, iż estymator *Crude Monte Carlo* ma największy rozrzut oraz o podobieństwie wyników dla estymatorów stratyfikacji. Najmniejszą wariancję uzyskano dla stratyfikacji o $m=5$ warstwch, największą dla estymatora $CMC$. Doświadczenie sugeruje, że badana wartość $I$ najprawdopodobniej wynosi około $7.4$.
+
+# Podsumowanie 
+
+Wszystkie opisane metody redukcji wariancji w przypadku badania wartości oczekiwanej opcji finansowych spełniły swoją rolę - zmniejszyły rozrzut estymowanej wartości. Niezależnie od metody, estymatory zbiegały do podobnej wartości, a w przypadku opcji europejskich mamy pewność, że zbiegają one do wartości teoretycznej. Z projektu możemy wywnioskować, że oczekiwana wartość wypłaty $I$ spada wraz ze wzroastem $n$. 
+
+
+# Tabela funkcji 
+
+W poniższej tabeli przedstawono funkcje wywołujące wykresy znajdujące się w pracy.
+
+```{r tabela fkcji}
+knitr::kable(wykresy)  
+```
+
 
