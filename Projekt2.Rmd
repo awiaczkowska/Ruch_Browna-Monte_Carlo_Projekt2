@@ -306,7 +306,7 @@ Y_str <- function(n, m, alloc_R){
 
 ## Porównanie estymatorów
 
-W celu porórnania powyżej opisanych metod, przyjmijmy $R=5000$ i wygenerujmy po $R'=1000$ realizacji każdego z estymatorów. Estymator stratyfikacji obliczymy dla liczby warstw $m=3$ oraz $m=5$. Poniżej na wykresie możemy zobaczyć wartości oblicznoych estymatorów.
+W celu porównania powyżej opisanych metod, przyjmijmy $R=5000$ i wygenerujmy po $R'=1000$ realizacji każdego z estymatorów. Estymator stratyfikacji obliczymy dla liczby warstw $m=3$ oraz $m=5$. Poniżej na wykresie możemy zobaczyć wartości oblicznoych estymatorów.
 
 ```{r estymatory dane fnc}
 estymatory<-function(fnc_wek, PU_R=1000){
@@ -399,7 +399,7 @@ boxplot_estymators1()
 wykresy[2,] <- c('2 & 3', 'boxplot 1', 'boxplot_estymators1', "()")
 ```
 
-Na podstawie zaprezentowanych informacji możemy stwierdzić, że każda z metod redukcji wariancji spełniła swoją rolę - najbardziej rozrzucony okazał się wektor estymatorów *Crude Monte Carlo*. W przypadku zaprezentowanych symulacji najmniejszą wariancję uzyskał estymator zmiennych antytetycznych, porównywalnie dobry wynik uzyskaliśmy również przy estymatorze zmiennych kontrolnych. W przypadku stratyfikacji dostrzec można, że więsza liczba warstw miała pewien wpływ na redukcję wariancji estymatora. Niezależnie od metody, wartości wszystkich estymatorów skupiają się wokół oblicznoego wyniku teoretycznego. 
+Na podstawie zaprezentowanych informacji możemy stwierdzić, że każda z metod redukcji wariancji spełniła swoją rolę - najbardziej rozrzucony okazał się wektor estymatorów *Crude Monte Carlo*. W przypadku zaprezentowanych symulacji najmniejszą wariancję uzyskał estymator zmiennych antytetycznych, porównywalnie dobry wynik uzyskaliśmy również przy estymatorze zmiennych kontrolnych. W przypadku stratyfikacji dostrzec można, że więsza liczba warstw miała niewielki wpływ na redukcję wariancji estymatora. Niezależnie od metody, wartości wszystkich estymatorów skupiają się wokół oblicznoego wyniku teoretycznego. 
 
 
 # Opcje azjatyckie
@@ -417,7 +417,7 @@ gdzie:
 
 W przypadku opcji azjatyckich nie istieje dokładny wzór opisujący wartość $I$, dlatego jedynym sposobem na przybliżenie tej wartości jest estmacja.
 
-## Estrymator Crude Monte Carlo
+## Estymator Crude Monte Carlo
 
 Estymowaną wartością jest $I = e^{-r}\cdot\mathbb E\left[(A_n - K)_+\right]$. Za liczbę replikacji przyjęto $R=5000$.
 
@@ -500,7 +500,7 @@ $$R_j = \left\lceil\frac{p_js_j}{\sum_{i=1}^mp_is_i}R \right\rceil.$$
 
 ## Porównanie estymatorów
 
-W celu porórnania opisanych metod, rozważymy dwa przypadki: $n=3$ oraz $n=10$. Przyjmijmy ponownie $R = 5000$ i wygenerujmy po $R' = 1000$ realizacji każdego z estymatorów. Estymatory stratyfikacji obliczymy dla $m = 3$ oraz $m = 5$ warstw. 
+W celu porównania opisanych metod, rozważymy dwa przypadki: $n=3$ oraz $n=10$. Przyjmijmy ponownie $R = 5000$ i wygenerujmy po $R' = 1000$ realizacji każdego z estymatorów. Estymatory stratyfikacji obliczymy dla $m = 3$ oraz $m = 5$ warstw. 
 
 ### $\mathbf{n=3}$
 
@@ -525,7 +525,7 @@ mtext("Wykres 4:", cex=0.7)
 wykresy[3,] <- c('4', 'plot 3', 'plot_estymators', '(estyms3, est_names, colrs)')
 ```
 
-Już z wykresu 4 możemy wywnioskować, że najbardziej skrajne wartości znaleźć możemy w estymatorze $CMC$ - co jest zgodne z intuicją. Zauważyć też można, że rozważane estymatory stratyfikacji zwracają zbliżone wyniki. Więcej szczegółów dotyczących rozrzutu rozważanych estymatorów możemy odczytać z poniższego wykresu pudełowego oraz wykresu słupkowego przedstawiającego obliczone wariancje.
+Już z wykresu 4 możemy wywnioskować, że najbardziej skrajne wartości znaleźć możemy w estymatorze $CMC$ - co jest zgodne z intuicją. Zauważyć można, że rozważane estymatory stratyfikacji zwracają podobne wyniki. Więcej szczegółów dotyczących rozrzutu rozważanych estymatorów możemy odczytać z poniższego wykresu pudełowego oraz wykresu słupkowego przedstawiającego obliczone wariancje.
 
 ```{r boxplot 3, fig.height=4.5, fig.width=11}
 par(mfrow=c(1,2)) 
@@ -537,7 +537,7 @@ mtext("Wykres 6:", cex=0.7)
 wykresy[4,] <- c('5', 'boxplot 3', 'boxplot_estymators', '(estyms3, est_names, colrs)')
 wykresy[5,] <- c('6', 'boxplot 3', 'vars_barplot', '(estyms3, est_names, colrs)')
 ```
-Po usunięciu wartości odstających rozkłady dla wszystkich eastymatorów prezentują się podobnie, jednak na wykresie wariacji możemy zauważyć, że stratyfikacja wpłynęła na zmniejszenie rozrzutu. Liczba warstw nie miała większego znaczenia, lepszy efekt uzyskano przy $m=3$.
+Po usunięciu wartości odstających rozkłady dla wszystkich eastymatorów prezentują się podobnie. jednak na wykresie wariacji możemy zauważyć, że stratyfikacja wpłynęła w bardzo niewielkim stopniu na zmniejszenie rozrzutu. Różnica jest pomijalna, co sugeruje, że wykorzystywanie metody stratyfikacji w tym przypadku nie jest konieczne. Również liczba warstw nie miała większego znaczenia, lepszy efekt uzyskano przy $m=3$. 
 Doświadczenie sugeruje, że przy $n=3$ badana wartość oczekiwana opcji azjatyckej $I$ wynosi w przybliżeniu $8.7$.
 
 
@@ -562,7 +562,7 @@ mtext("Wykres 7:", cex=0.7)
 wykresy[6,] <- c('7', 'plot 10', 'plot_estymators', '(estyms10, est_names, colrs)')
 ```
 
-Z powyższego wykresu widzimy, że estymatory stratyfikacji dla $m=3$ i $m=5$ są podobnie rozrzucone i prawdopodobnie mają mniejsze odchylenie standardowe niż estymator $CMC$, jednak więcej szczegłów  możemy odczytać z wykresu 8 i 9.
+Z powyższego wykresu widzimy, że estymatory stratyfikacji dla $m=3$ i $m=5$ są podobnie rozrzucone i prawdopodobnie mają nieco mniejsze odchylenie standardowe niż estymator $CMC$, jednak więcej szczegłów  możemy odczytać z wykresu 8 i 9.
 
 ```{r boxplot 10, fig.height=4.5, fig.width=11}
 colnames(estyms10)<-est_names
@@ -576,11 +576,11 @@ wykresy[7,] <- c('8', 'boxplot 10', 'boxplot_estymators', '(estyms10, est_names,
 wykresy[8,] <- c('9', 'boxplot 10', 'vars_barplot', '(estyms10, est_names, colrs)')
 ```
 
-Na wykresie pudełowym możemy zaobserwować potwierdzenie faktu,, iż estymator *Crude Monte Carlo* ma największy rozrzut oraz o podobieństwie wyników dla estymatorów stratyfikacji. Najmniejszą wariancję uzyskano dla stratyfikacji o $m=5$ warstwch, największą dla estymatora $CMC$. Doświadczenie sugeruje, że badana wartość $I$ najprawdopodobniej wynosi około $7.4$.
+Na wykresie pudełowym możemy zaobserwować potwierdzenie faktu, iż estymator *Crude Monte Carlo* ma największy rozrzut. Stratyfikacja przy wybranych liczbach warstw zwraca podobne wyniki, jednak ich wariancja nie różni się znacząco od tej obliczonej dla $CMC$. Doświadczenie sugeruje, że badana wartość $I$ najprawdopodobniej wynosi około $7.4$.
 
 # Podsumowanie 
 
-Wszystkie opisane metody redukcji wariancji w przypadku badania wartości oczekiwanej opcji finansowych spełniły swoją rolę - zmniejszyły rozrzut estymowanej wartości. Niezależnie od metody, estymatory zbiegały do podobnej wartości, a w przypadku opcji europejskich mamy pewność, że zbiegają one do wartości teoretycznej. Z projektu możemy wywnioskować, że oczekiwana wartość wypłaty $I$ spada wraz ze wzroastem $n$. 
+Wszystkie opisane metody redukcji wariancji w przypadku badania wartości oczekiwanej opcji finansowych spełniły swoją rolę - zmniejszyły rozrzut estymowanej wartości. Niestety w zbadanych przypadkach opcji azjatyckich poprawa wynikająca ze stratyfikacji była niewielka. Niezależnie od metody, estymatory zbiegały do podobnej wartości, a w przypadku opcji europejskich mamy pewność, że zbiegają one do wartości teoretycznej. Z projektu możemy wywnioskować, że oczekiwana wartość wypłaty $I$ spada wraz ze wzrostem wartości $n$. 
 
 
 # Tabela funkcji 
